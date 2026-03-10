@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require("cors");
 const bodyParser = require('body-parser');
-const RouterOSClient = require('node-routeros'); // npm i node-routeros
+const { RouterOSAPI } = require('node-routeros'); // npm i node-routeros
 const twilio = require('twilio');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -167,29 +167,36 @@ app.post('/verify_ticket', async (req, res) => {
 // --- Health check ---
 app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 
-async function createHotspotUser(ticket, days){
+async function createHotspotUser(ticket, plan) {
 
-const client = new RouterOSClient({
-  host: MIKROTIK_HOST,
-  user: MIKROTIK_USER,
-  password: MIKROTIK_PASS,
-})
+  const conn = new RouterOSAPI({
+    host: process.env.MIKROTIK_HOST,
+    user: process.env.MIKROTIK_USER,
+    password: process.env.MIKROTIK_PASS,
+    port: 8728
+  });
 
-await client.connect()
+  try {
 
-const api = client.menu("/ip/hotspot/user")
+    await conn.connect();
 
-await api.add({
-  name: ticket,
-  password: ticket,
-  profile: "default",
-  "limit-uptime": days + "d"
-})
+    await conn.write('/ip/hotspot/user/add', [
+      `=name=${ticket}`,
+      `=password=${ticket}`,
+      `=profile=${plan}`
+    ]);
 
-await client.close()
+    conn.close();
+
+    console.log("Utilisateur hotspot créé");
+
+  } catch(err) {
+
+    console.log("Erreur MikroTik :", err);
+
+  }
 
 }
-
 async function sendTicketSMS(phone, ticket, planName, expires_at){
 
 const expirationDate = new Date(expires_at).toLocaleDateString("fr-FR",{
@@ -217,6 +224,7 @@ to: phone
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

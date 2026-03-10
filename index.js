@@ -204,7 +204,7 @@ const expirationDate = new Date(expires_at).toLocaleDateString("fr-FR",{
   month: "2-digit",
   year: "numeric"
 })
-
+const phone = "+242" + req.body.phone;
 await twilioClient.messages.create({
 
 body: `Bigo Wifi 🎉
@@ -224,6 +224,7 @@ to: phone
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

@@ -8,9 +8,6 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 app.use(bodyParser.json());
 
-const cors = require('cors');
-app.use(cors()); // autorise toutes les origines
-
 // === Supabase config ===
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -160,6 +157,7 @@ app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

@@ -79,9 +79,9 @@ app.post('/generate_ticket', async (req, res) => {
     if (!phone || !plan) return res.status(400).json({ success: false, error: 'Missing phone or plan' });
 
     const plans = {
-      "1jour": { name: "1 Jour", days: 1 },
-      "1semaine": { name: "1 Semaine", days: 7 },
-      "1mois": { name: "1 Mois", days: 30 }
+      "1jour": { name: "1jour", days: 1 },
+      "1semaine": { name: "1semaine", days: 7 },
+      "1mois": { name: "1mois", days: 30 }
     };
     const selectedPlan = plans[plan];
     if (!selectedPlan) return res.status(400).json({ success: false, error: 'Invalid plan' });
@@ -224,6 +224,7 @@ to: phone
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

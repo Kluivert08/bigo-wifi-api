@@ -1,14 +1,14 @@
-# Use a slim image to keep things fast
+# Utilisation d'une image légère
 FROM node:20-bookworm-slim as base
 
-# Set production environment
+# Environnement de production
 ENV NODE_ENV="production"
 WORKDIR /app
 
-# --- Build Stage ---
+# --- Étape de Build ---
 FROM base as build
 
-# Install packages needed to build node modules
+# Installation des dépendances système nécessaires pour compiler des modules Node
 RUN apt-get update -qq && \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get install --no-install-recommends -y \
@@ -19,20 +19,22 @@ RUN apt-get update -qq && \
     python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Install application dependencies
-# On ne copie QUE le package.json ici
+# Installation des dépendances de l'application
+# On ne copie que le package.json car vous n'avez pas de lockfile
 COPY package.json ./
 RUN npm install --include=dev
 
-# Copy application code
+# Copie du reste du code source
 COPY . .
 
-# --- Final Stage ---
+# --- Étape Finale ---
 FROM base
 
-# Copy built application
+# Copie uniquement le dossier de l'application depuis l'étape de build
 COPY --from=build /app /app
 
-# Expose port and start
+# Exposition du port (doit correspondre à fly.toml)
 EXPOSE 8080
+
+# Commande de démarrage
 CMD [ "npm", "run", "start" ]

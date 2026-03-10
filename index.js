@@ -90,9 +90,7 @@ app.post('/generate_ticket', async (req, res) => {
     const ticketUnique = await createUniqueTicket();
 
 const ticket = generateTicket()
-
-await createHotspotUser(ticket, selectedPlan.days)
-    
+   
     // --- Calcul date expiration ---
     const expires_at = getExpirationDate(selectedPlan.days);
 
@@ -167,7 +165,17 @@ app.post('/verify_ticket', async (req, res) => {
 // --- Health check ---
 app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 
+await createHotspotUser(ticket, selectedPlan.days)
+
 async function createHotspotUser(ticket, plan) {
+
+  const planMap = {
+    1: "1jour",
+    7: "1semaine",
+    30: "1mois"
+  };
+
+  const profileName = planMap[plan];
 
   const conn = new RouterOSAPI({
     host: process.env.MIKROTIK_HOST,
@@ -183,7 +191,7 @@ async function createHotspotUser(ticket, plan) {
     await conn.write('/ip/hotspot/user/add', [
       `=name=${ticket}`,
       `=password=${ticket}`,
-      `=profile=${plan}`
+      `=profile=${profileName}`
     ]);
 
     conn.close();
@@ -224,6 +232,7 @@ to: phone
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

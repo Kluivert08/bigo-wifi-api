@@ -1,5 +1,6 @@
 // index.js
 const express = require('express');
+const cors = require("cors");
 const bodyParser = require('body-parser');
 const { RouterOSClient } = require('node-routeros'); // npm i node-routeros
 const twilio = require('twilio');
@@ -7,6 +8,12 @@ const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(bodyParser.json());
+
+app.use(cors({
+  origin: "*",
+  methods: ["GET","POST"],
+  allowedHeaders: ["Content-Type","Authorization"]
+}));
 
 // === Supabase config ===
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -157,6 +164,7 @@ app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

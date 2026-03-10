@@ -12,6 +12,7 @@
     "express": "^4.18.2",
     "node-routeros": "latest",
     "twilio": "^4.15.1",
+    "cors": "^2.8.5",
     "@supabase/supabase-js": "^2.39.0"
   },
   "engines": {
@@ -21,6 +22,7 @@
   "license": "MIT"
 
 }
+
 
 
 

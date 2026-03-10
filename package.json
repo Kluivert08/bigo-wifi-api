@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "API pour créer utilisateurs MikroTik et envoyer SMS Twilio",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
@@ -20,5 +21,6 @@
   "license": "MIT"
 
 }
+
 
 

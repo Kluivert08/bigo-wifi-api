@@ -6,6 +6,24 @@ const { RouterOSClient } = require('node-routeros');
 const twilio = require('twilio');
 const { createClient } = require('@supabase/supabase-js');
 
+// Add at the top after requiring modules
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Validate environment variables on startup
+const requiredEnvVars = ['MIKROTIK_HOST', 'MIKROTIK_USER', 'MIKROTIK_PASS', 
+  'TWILIO_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM', 'API_TOKEN',
+  'SUPABASE_URL', 'SUPABASE_SERVICE_KEY'];
+
+requiredEnvVars.forEach(envVar => {
+  if (!process.env[envVar]) {
+    console.error(`Missing required environment variable: ${envVar}`);
+    process.exit(1);
+  }
+});
+
+
 const app = express();
 app.use(bodyParser.json());
 
@@ -239,3 +257,4 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
+

@@ -9,8 +9,6 @@ WORKDIR /app
 FROM base as build
 
 # Install packages needed to build node modules
-# 1. DEBIAN_FRONTEND ensures no prompts hang the build
-# 2. We combine update, install, and cache cleanup in one layer
 RUN apt-get update -qq && \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get install --no-install-recommends -y \
@@ -22,14 +20,12 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists/*
 
 # Install application dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --include=dev
+# On ne copie QUE le package.json ici
+COPY package.json ./
+RUN npm install --include=dev
 
 # Copy application code
 COPY . .
-
-# Build application (if applicable, e.g., for Next.js/Prisma)
-# RUN npm run build
 
 # --- Final Stage ---
 FROM base

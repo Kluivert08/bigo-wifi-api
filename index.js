@@ -7,6 +7,17 @@ const twilio = require('twilio');
 const app = express();
 app.use(bodyParser.json());
 
+function generateTicket(length = 6) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let ticket = "BG";
+
+  for (let i = 0; i < length; i++) {
+    ticket += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return ticket;
+}
+
 // === Variables d'environnement ===
 const MIKROTIK_HOST = process.env.MIKROTIK_HOST;
 const MIKROTIK_USER = process.env.MIKROTIK_USER;
@@ -74,3 +85,4 @@ app.get("/", (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
+

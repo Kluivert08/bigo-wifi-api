@@ -10,7 +10,7 @@
     "body-parser": "^1.20.2",
     "express": "^4.18.2",
     "node-routeros": "latest",
-    "twilio": "^4.15.1"
+    "twilio": "^4.15.1",
     "@supabase/supabase-js": "^2.39.0"
   },
   "engines": {
@@ -20,4 +20,5 @@
   "license": "MIT"
 
 }
+
 

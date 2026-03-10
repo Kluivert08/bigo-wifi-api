@@ -67,7 +67,7 @@ app.post('/generate_ticket', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const { phone, plan } = req.body;
+    const { phone, plan, method: paymentMethod } = req.body;
     if (!phone || !plan) return res.status(400).json({ success: false, error: 'Missing phone or plan' });
 
     const plans = {
@@ -157,6 +157,7 @@ app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

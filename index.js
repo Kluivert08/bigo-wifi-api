@@ -28,6 +28,7 @@ const MIKROTIK_PASS = process.env.MIKROTIK_PASS;
 const TWILIO_SID = process.env.TWILIO_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_FROM = process.env.TWILIO_FROM;
+const twilioClient = twilio(TWILIO_SID, TWILIO_AUTH_TOKEN)
 
 // === API Token pour sécuriser les endpoints ===
 const API_TOKEN = process.env.API_TOKEN;
@@ -88,6 +89,10 @@ app.post('/generate_ticket', async (req, res) => {
     // --- Génération ticket unique ---
     const ticket = await createUniqueTicket();
 
+const ticket = generateTicket()
+
+await createHotspotUser(ticket, selectedPlan.days)
+    
     // --- Calcul date expiration ---
     const expires_at = getExpirationDate(selectedPlan.days);
 
@@ -101,6 +106,7 @@ app.post('/generate_ticket', async (req, res) => {
     created_at: new Date(),
     expires_at: expires_at}]);
 
+    await sendTicketSMS(phone, ticket, selectedPlan.name, expires_at)
     // === PLACEHOLDER: Création utilisateur MikroTik ===
     // Uncomment & configure when credentials are ready
     /*
@@ -161,9 +167,57 @@ app.post('/verify_ticket', async (req, res) => {
 // --- Health check ---
 app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 
+async function createHotspotUser(ticket, days){
+
+const client = new RouterOSClient({
+  host: MIKROTIK_HOST,
+  user: MIKROTIK_USER,
+  password: MIKROTIK_PASS,
+})
+
+await client.connect()
+
+const api = client.menu("/ip/hotspot/user")
+
+await api.add({
+  name: ticket,
+  password: ticket,
+  profile: "default",
+  "limit-uptime": days + "d"
+})
+
+await client.close()
+
+}
+
+async function sendTicketSMS(phone, ticket, planName, expires_at){
+
+const expirationDate = new Date(expires_at).toLocaleDateString("fr-FR",{
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric"
+})
+
+await twilioClient.messages.create({
+
+body: `Bigo Wifi 🎉
+Ticket WiFi : ${ticket}
+Forfait : ${planName}
+Expire le : ${expirationDate}
+`,
+
+from: TWILIO_PHONE,
+to: phone
+
+})
+
+}
+
+
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

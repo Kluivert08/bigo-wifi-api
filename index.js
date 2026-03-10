@@ -90,7 +90,12 @@ app.post('/generate_ticket', async (req, res) => {
     // --- Enregistrement Supabase ---
     await supabaseClient
       .from("wifi_subscriptions")
-      .insert([{  phone, plan, selectedPlan.name, ticket, expires_at }]);
+      .insert([{  userphone: phone,
+    plan: selectedPlan.name,
+    payment_method: paymentMethod || null,
+    ticketwifi: ticket,
+    created_at: new Date(),
+    expires_at: expires_at}]);
 
     // === PLACEHOLDER: Création utilisateur MikroTik ===
     // Uncomment & configure when credentials are ready
@@ -155,6 +160,7 @@ app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

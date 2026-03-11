@@ -165,7 +165,11 @@ app.post('/verify_ticket', async (req, res) => {
 // --- Health check ---
 app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
 
-await createHotspotUser(ticket, selectedPlan.days)
+async function main() {
+  await createHotspotUser(ticket, selectedPlan.days);
+}
+
+main().catch(console.error);
 
 async function createHotspotUser(ticket, plan) {
 
@@ -232,6 +236,7 @@ to: phone
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

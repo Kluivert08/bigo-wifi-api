@@ -190,7 +190,9 @@ async function createHotspotUser(ticket, plan) {
 
   try {
 
+    console.log("Connexion MikroTik...");
     await conn.connect();
+    console.log("Connecté !");
 
     await conn.write('/ip/hotspot/user/add', [
       `=name=${ticket}`,
@@ -236,6 +238,7 @@ to: phone
 // --- Lancer le serveur ---
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+
 
 
 

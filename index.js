@@ -1,276 +1,127 @@
-// index.js
 import express from 'express'
+import cors from 'cors'
+import bodyParser from 'body-parser'
+import { createClient } from '@supabase/supabase-js'
+import twilio from 'twilio'
 
 const app = express()
 
-app.get('/', (req, res) => {
-  res.send('Bigo Wifi API running')
-})
+app.use(bodyParser.json())
+app.use(cors())
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' })
-})
+// ===== CONFIG =====
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_KEY
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-app.listen(3000, () => {
-  console.log('Server running on port 3000')
-})
+const twilioClient = twilio(
+  process.env.TWILIO_SID,
+  process.env.TWILIO_AUTH_TOKEN
+)
 
-const express = require('express');
-const cors = require("cors");
-const bodyParser = require('body-parser');
-const { RouterOSAPI } = require('node-routeros'); // npm i node-routeros
-const twilio = require('twilio');
-const { createClient } = require('@supabase/supabase-js');
+const TWILIO_FROM = process.env.TWILIO_FROM
+const API_TOKEN = process.env.API_TOKEN
 
-const app = express();
-app.use(bodyParser.json());
+// ===== UTILS =====
 
-app.use(cors({
-  origin: "*",
-  methods: ["GET","POST"],
-  allowedHeaders: ["Content-Type","Authorization"]
-}));
-
-// === Supabase config ===
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// === Environment Variables MikroTik & Twilio (placeholders) ===
-const MIKROTIK_HOST = process.env.MIKROTIK_HOST;
-const MIKROTIK_USER = process.env.MIKROTIK_USER;
-const MIKROTIK_PASS = process.env.MIKROTIK_PASS;
-
-const TWILIO_SID = process.env.TWILIO_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_FROM = process.env.TWILIO_FROM;
-const twilioClient = twilio(TWILIO_SID, TWILIO_AUTH_TOKEN)
-
-// === API Token pour sécuriser les endpoints ===
-const API_TOKEN = process.env.API_TOKEN;
-
-// === Utils: Génération ticket unique ===
 function generateTicket() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let ticket = "BG-";
-  for (let i = 0; i < 4; i++) ticket += chars.charAt(Math.floor(Math.random() * chars.length));
-  ticket += "-";
-  for (let i = 0; i < 3; i++) ticket += chars.charAt(Math.floor(Math.random() * chars.length));
-  return ticket;
-}
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  let ticket = "BG-"
 
-async function createUniqueTicket() {
-  let ticket;
-  let exists = true;
-
-  while (exists) {
-    ticket = generateTicket();
-    const { data } = await supabaseClient
-      .from("wifi_subscriptions")
-      .select("ticket")
-      .eq("ticket", ticket);
-
-    if (!data || data.length === 0) exists = false;
+  for (let i = 0; i < 4; i++) {
+    ticket += chars[Math.floor(Math.random() * chars.length)]
   }
 
-  return ticket;
+  ticket += "-"
+
+  for (let i = 0; i < 3; i++) {
+    ticket += chars[Math.floor(Math.random() * chars.length)]
+  }
+
+  return ticket
 }
 
-// === Utils: calcul date expiration ===
 function getExpirationDate(days) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date;
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return d
 }
 
-// === Endpoint test: générer ticket et enregistrer Supabase ===
-app.post('/generate_ticket', async (req, res) => {
+// ===== ROUTES =====
+
+app.get("/", (req, res) => {
+  res.send("Bigo Wifi API running 🚀")
+})
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" })
+})
+
+// ===== CREATE TICKET =====
+
+app.post("/generate_ticket", async (req, res) => {
+
   try {
-    const token = req.headers['authorization'];
-    if (!token || token !== `Bearer ${API_TOKEN}`) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const token = req.headers['authorization']
+    if (token !== `Bearer ${API_TOKEN}`) {
+      return res.status(401).json({ success:false })
     }
 
-    const { phone, plan, method: paymentMethod } = req.body;
-    if (!phone || !plan) return res.status(400).json({ success: false, error: 'Missing phone or plan' });
+    const { phone, plan, method } = req.body
 
     const plans = {
-      "1jour": { name: "1jour", days: 1 },
-      "1semaine": { name: "1semaine", days: 7 },
-      "1mois": { name: "1mois", days: 30 }
-    };
-    const selectedPlan = plans[plan];
-    if (!selectedPlan) return res.status(400).json({ success: false, error: 'Invalid plan' });
+      "1jour": { name:"1 Jour", days:1 },
+      "1semaine": { name:"1 Semaine", days:7 },
+      "1mois": { name:"1 Mois", days:30 }
+    }
 
-    // --- Génération ticket unique ---
-    const ticketUnique = await createUniqueTicket();
+    const selectedPlan = plans[plan]
+    if (!selectedPlan) {
+      return res.status(400).json({ success:false })
+    }
 
-const ticket = generateTicket()
-   
-    // --- Calcul date expiration ---
-    const expires_at = getExpirationDate(selectedPlan.days);
+    const ticket = generateTicket()
+    const expires_at = getExpirationDate(selectedPlan.days)
 
-    // --- Enregistrement Supabase ---
-    await supabaseClient
+    // ===== SAVE SUPABASE =====
+    const { error } = await supabase
       .from("wifi_subscriptions")
-      .insert([{  userphone: phone,
-    plan: selectedPlan.name,
-    payment_method: paymentMethod || null,
-    ticketwifi: ticket,
-    created_at: new Date(),
-    expires_at: expires_at}]);
+      .insert([{
+        phone: phone,
+        plan: selectedPlan.name,
+        payment_method: method,
+        ticket: ticket,
+        created_at: new Date(),
+        expires_at: expires_at
+      }])
 
-    await sendTicketSMS(phone, ticket, selectedPlan.name, expires_at)
-    // === PLACEHOLDER: Création utilisateur MikroTik ===
-    // Uncomment & configure when credentials are ready
-    /*
-    const conn = new RouterOSClient({
-      host: MIKROTIK_HOST,
-      user: MIKROTIK_USER,
-      password: MIKROTIK_PASS
-    });
-    await conn.connect();
-    await conn.menu('/ip/hotspot/user').add({
-      name: ticket,
-      password: ticket,
-      profile: plan
-    });
-    conn.close();
-    */
+    if (error) throw error
 
-    // === PLACEHOLDER: Envoi SMS Twilio ===
-    // Uncomment & configure when Twilio keys are ready
-    /*
-    const client = twilio(TWILIO_SID, TWILIO_AUTH_TOKEN);
-    await client.messages.create({
-      to: phone,
+    // ===== SMS =====
+    await twilioClient.messages.create({
       from: TWILIO_FROM,
-      body: `Votre code Wifi : ${ticket}`
-    });
-    */
+      to: phone,
+      body: `Bigo Wifi 🎉
+Ticket: ${ticket}
+Forfait: ${selectedPlan.name}`
+    })
 
-    res.json({ success: true, ticket });
+    res.json({ success:true, ticket })
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 
-// === Endpoint test: vérifier ticket login ===
-app.post('/verify_ticket', async (req, res) => {
-  try {
-    const { ticket } = req.body;
-    if (!ticket) return res.status(400).json({ success: false, error: 'Missing ticket' });
-
-    const { data, error } = await supabaseClient
-      .from("wifi_subscriptions")
-      .select("*")
-      .eq("ticket", ticket)
-      .single();
-
-    if (error || !data) return res.status(404).json({ success: false, error: 'Ticket invalide' });
-
-    res.json({ success: true, plan: data.plan, expires_at: data.expires_at });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// --- Health check ---
-app.get("/", (req, res) => res.send("Bigo Wifi API running 🚀"));
-
-async function main() {
-  await createHotspotUser(ticket, selectedPlan.days);
-}
-
-main().catch(console.error);
-
-async function createHotspotUser(ticket, plan) {
-
-  const planMap = {
-    1: "1jour",
-    7: "1semaine",
-    30: "1mois"
-  };
-
-  const profileName = planMap[plan];
-
-  const conn = new RouterOSAPI({
-    host: process.env.MIKROTIK_HOST,
-    user: process.env.MIKROTIK_USER,
-    password: process.env.MIKROTIK_PASS,
-    port: 8728
-  });
-
-  try {
-
-    console.log("Connexion MikroTik...");
-    await conn.connect();
-    console.log("Connecté !");
-
-    await conn.write('/ip/hotspot/user/add', [
-      `=name=${ticket}`,
-      `=password=${ticket}`,
-      `=profile=${profileName}`
-    ]);
-
-    conn.close();
-
-    console.log("Utilisateur hotspot créé");
-
-  } catch(err) {
-
-    console.log("Erreur MikroTik :", err);
+    console.error(err)
+    res.status(500).json({ success:false })
 
   }
-
-}
-async function sendTicketSMS(phone, ticket, planName, expires_at){
-
-const expirationDate = new Date(expires_at).toLocaleDateString("fr-FR",{
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric"
-})
-
-await twilioClient.messages.create({
-
-body: `Bigo Wifi 🎉
-Ticket WiFi : ${ticket}
-Forfait : ${planName}
-Expire le : ${expirationDate}
-`,
-
-from: TWILIO_FROM,
-to: phone
 
 })
 
-}
+// ===== SERVER =====
 
+const PORT = process.env.PORT || 8080
 
-// --- Lancer le serveur ---
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Server running on port " + PORT)
+})

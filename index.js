@@ -1,4 +1,20 @@
 // index.js
+import express from 'express'
+
+const app = express()
+
+app.get('/', (req, res) => {
+  res.send('Bigo Wifi API running')
+})
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' })
+})
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000')
+})
+
 const express = require('express');
 const cors = require("cors");
 const bodyParser = require('body-parser');

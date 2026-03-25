@@ -27,16 +27,15 @@ const plans = {
 
 // --- 1. ENDPOINT : GÉNÉRATION ET INITIALISATION PAIEMENT ---
 app.post('/generate_ticket', async (req, res) => {
-  const { phone, plan, method } = req.body; // method: 'mtn' ou 'airtel'
+  const { phone, plan, method } = req.body; 
   const selectedPlan = plans[plan];
 
   if (!selectedPlan) return res.status(400).json({ error: "Plan invalide" });
 
   const ticketCode = generateTicketCode();
-  const externalRef = `BIGO_${Date.now()}`; // Référence pour Wortis
+  const externalRef = `BIGO_${Date.now()}`; 
 
   try {
-    // A. Insertion dans Supabase en mode 'pending'
     const { error: dbError } = await supabase
       .from('wifi_subscriptions')
       .insert([{
@@ -52,10 +51,9 @@ app.post('/generate_ticket', async (req, res) => {
 
     if (dbError) throw dbError;
 
-    // B. Appel API Wortispay (Push Money)
     const response = await axios.post(`${WORTIS_BASE_URL}/push/money`, {
       operator: method,
-      phone: phone.replace('+', ''), // Nettoyage du numéro
+      phone: phone.replace('+', ''), 
       montant: selectedPlan.price,
       reference: externalRef,
       devis: "XAF",
@@ -85,7 +83,6 @@ app.post('/check_payment', async (req, res) => {
   const { payment_ref, method } = req.body;
 
   try {
-    // A. On interroge Wortispay sur le statut
     const response = await axios.post(`${WORTIS_BASE_URL}/check/push/money`, {
       operator: method,
       clientkey: "wortis",
@@ -97,10 +94,8 @@ app.post('/check_payment', async (req, res) => {
       }
     });
 
-    // B. Si succès confirmé par Wortis
     if (response.data.response && response.data.response.success === true) {
       
-      // Mettre à jour le ticket en 'paid'
       const { data: ticket, error } = await supabase
         .from('wifi_subscriptions')
         .update({ status: 'paid' })
@@ -110,10 +105,10 @@ app.post('/check_payment', async (req, res) => {
 
       if (error) throw error;
 
-      // C. Envoi du SMS de confirmation via Twilio
+      // ENVOI DU SMS AUTOMATIQUE
       try {
         await twilioClient.messages.create({
-          body: `Bigo Wifi : Votre code est ${ticket.ticket_code}. Forfait ${ticket.plan}.`,
+          body: `Bigo Wifi : Votre code est ${ticket.ticket_code}. Forfait ${ticket.plan}. Connectez-vous maintenant !`,
           from: process.env.TWILIO_NUMBER,
           to: ticket.phone
         });
@@ -136,7 +131,6 @@ app.post('/check_payment', async (req, res) => {
   }
 });
 
-// Santé du serveur
 app.get('/health', (req, res) => res.json({ status: 'Bigo API is alive' }));
 
 const PORT = process.env.PORT || 8080;

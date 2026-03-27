@@ -191,3 +191,26 @@ app.post('/check_payment', async (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`🚀 API BIGO READY sur port ${PORT}`));
+
+// --- NOUVELLE ROUTE POUR MIKROTIK ---
+app.get('/sync_mikrotik', async (req, res) => {
+    try {
+        // On récupère les tickets "paid" qui n'ont pas encore été expirés
+        const { data, error } = await supabase
+            .from('wifi_subscriptions')
+            .select('ticket_code, speed_limit, remaining_seconds')
+            .eq('status', 'paid');
+
+        if (error) throw error;
+
+        // On renvoie un format texte simple que le MikroTik peut lire facilement
+        let output = "";
+        data.forEach(t => {
+            output += `${t.ticket_code},${t.speed_limit},${t.remaining_seconds}|`;
+        });
+        
+        res.send(output);
+    } catch (err) {
+        res.status(500).send("error");
+    }
+});

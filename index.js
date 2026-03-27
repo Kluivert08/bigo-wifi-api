@@ -8,7 +8,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- Configuration des Services ---
+// --- Configuration ---
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 const WORTIS_BASE_URL = "https://devhub.wortis.cg";
@@ -29,7 +29,7 @@ const plans = {
   '1mois': { name: "1 MOIS", price: 4200, seconds: 2592000, speed: '3M/3M' }
 };
 
-// --- AUTHENTIFICATION WORTIS (JWT) ---
+// --- LOGIQUE AUTH WORTIS (TOKEN JWT) ---
 async function getWortisToken() {
     try {
         const res = await axios.post(`${WORTIS_BASE_URL}/token`, {}, {
@@ -38,7 +38,7 @@ async function getWortisToken() {
                 'apikey': process.env.WORTIS_API_KEY,
                 'apinumc': process.env.WORTIS_API_NUMC
             },
-            timeout: 5000 
+            timeout: 5000
         });
         return res.data.access_token;
     } catch (error) {
@@ -47,14 +47,19 @@ async function getWortisToken() {
     }
 }
 
-// --- 1. INITIALISATION DU PAIEMENT (PUSH) ---
+// --- 1. INITIALISATION DU PAIEMENT (AIRTEL & MTN) ---
 app.post('/generate_ticket', async (req, res) => {
     const { tel, plan } = req.body; 
     const selectedPlan = plans[plan];
 
     if (!selectedPlan) return res.status(400).json({ error: "Plan invalide" });
 
-    let operator = tel.startsWith('06') ? "mtn" : "airtel";
+    let operator = null;
+    if (tel.startsWith('06')) operator = "mtn";
+    else if (tel.startsWith('04') || tel.startsWith('05')) operator = "airtel";
+
+    if (!operator) return res.status(400).json({ error: "Numéro non reconnu" });
+
     const ticketCode = generateTicketCode();
     const externalRef = `BIGO_${Date.now()}`;
     const expiresAt = new Date();
@@ -62,11 +67,11 @@ app.post('/generate_ticket', async (req, res) => {
 
     try {
         const token = await getWortisToken();
-        if (!token) throw new Error("Impossible de générer le Token API");
+        if (!token) throw new Error("Échec récupération Token");
 
-        console.log(`[${operator}] Initiation Push pour ${tel}...`);
+        console.log(`[${operator.toUpperCase()}] Tentative de Push pour ${tel}...`);
 
-        // A. Appel PUSH avec timeout étendu pour MTN
+        // A. Appel PUSH vers Wortis
         const pushRes = await axios.post(`${WORTIS_BASE_URL}/push/money`, {
             "operator": operator,
             "clientkey": "wortis",
@@ -77,20 +82,33 @@ app.post('/generate_ticket', async (req, res) => {
             "description": `BIGO WIFI - ${selectedPlan.name}`
         }, {
             headers: { 'Authorization': `Bearer ${token}` },
-            timeout: 15000 // 15 secondes max pour laisser USSD s'afficher
+            timeout: 15000 // Timeout large pour le réseau MTN
         });
 
-        // B. Extraction ID Wortis (WP...)
-        const wortisId = pushRes.data?.response?.data?.transaction?.id;
-        if (!wortisId) throw new Error("ID Wortis absent de la réponse");
+        // B. EXTRACTION INTELLIGENTE DE L'ID (Logique Multi-Opérateurs)
+        let wortisId = null;
+        const resBody = pushRes.data.response;
 
-        // C. Insertion Atomique dans Supabase
+        if (resBody.data && resBody.data.transaction) {
+            // Format AIRTEL
+            wortisId = resBody.data.transaction.id;
+        } else if (resBody.transID) {
+            // Format MTN
+            wortisId = resBody.transID;
+        }
+
+        if (!wortisId) {
+            console.error("Réponse Wortis non reconnue:", JSON.stringify(pushRes.data));
+            throw new Error("Wortis n'a pas renvoyé d'ID de transaction valide");
+        }
+
+        // C. INSERTION DANS SUPABASE
         const { error: dbError } = await supabase.from('wifi_subscriptions').insert([{
             phone: tel,
             plan: plan,
             ticket_code: ticketCode,
             payment_ref: externalRef,
-            wortis_id: wortisId,
+            wortis_id: wortisId, 
             status: 'pending',
             remaining_seconds: selectedPlan.seconds,
             speed_limit: selectedPlan.speed,
@@ -99,23 +117,13 @@ app.post('/generate_ticket', async (req, res) => {
             expires_at: expiresAt.toISOString()
         }]);
 
-        if (dbError) console.error("⚠️ Erreur Supabase (non critique):", dbError.message);
+        if (dbError) throw dbError;
 
-        // D. Réponse immédiate au navigateur pour lancer le Polling
-        console.log(`✅ Push OK [${wortisId}] pour ${tel}`);
-        return res.status(200).json({ 
-            success: true, 
-            payment_ref: externalRef 
-        });
+        console.log(`✅ Succès : ${operator.toUpperCase()} [ID: ${wortisId}]`);
+        res.json({ success: true, payment_ref: externalRef });
 
     } catch (error) {
-        console.error("❌ Erreur /generate_ticket:", error.response?.data || error.message);
-        
-        // Sécurité : Si Wortis a déjà envoyé le push mais a timeout, on tente quand même
-        if (error.code === 'ECONNABORTED') {
-            return res.status(200).json({ success: true, payment_ref: externalRef, warning: "Timeout réseau" });
-        }
-        
+        console.error("❌ Erreur Initiation:", error.response?.data || error.message);
         res.status(500).json({ error: "Impossible d'initier le paiement" });
     }
 });
@@ -138,7 +146,7 @@ app.post('/check_payment', async (req, res) => {
 
         const token = await getWortisToken();
         
-        // B. Vérification du statut final chez Wortis
+        // B. Vérification du statut chez Wortis
         const response = await axios.post(`${WORTIS_BASE_URL}/check/push/money`, {
             "clientkey": "wortis",
             "id_wp": sub.wortis_id 
@@ -146,9 +154,10 @@ app.post('/check_payment', async (req, res) => {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // C. Si le client a validé son code PIN
+        // C. Si le paiement est validé par le client
         if (response.data.response && response.data.response.success === true) {
             
+            // Mise à jour finale Supabase
             const { data: ticket, error: updateError } = await supabase
                 .from('wifi_subscriptions')
                 .update({ status: 'paid' })
@@ -158,7 +167,7 @@ app.post('/check_payment', async (req, res) => {
 
             if (updateError) throw updateError;
 
-            // D. SMS de confirmation (Twilio)
+            // D. Envoi du SMS (Optionnel)
             try {
                 await twilioClient.messages.create({
                     body: `Bigo Wifi : Paiement validé ! Votre code est ${ticket.ticket_code}.`,
@@ -166,7 +175,7 @@ app.post('/check_payment', async (req, res) => {
                     to: `+242${ticket.phone}`
                 });
             } catch (smsErr) {
-                console.warn("SMS non envoyé (quota épuisé)");
+                console.warn("SMS non envoyé.");
             }
 
             return res.json({ success: true, status: 'paid', ticket_code: ticket.ticket_code });
@@ -175,10 +184,10 @@ app.post('/check_payment', async (req, res) => {
         res.json({ success: false, status: 'pending' });
 
     } catch (error) {
-        console.error("❌ Erreur /check_payment:", error.message);
+        console.error("❌ Erreur Check:", error.message);
         res.status(500).json({ error: "Vérification en cours..." });
     }
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`🚀 Serveur BIGO opérationnel sur port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 API BIGO READY sur port ${PORT}`));

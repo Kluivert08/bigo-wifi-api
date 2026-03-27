@@ -8,12 +8,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- Configuration des variables d'environnement ---
+// --- Configuration ---
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 const WORTIS_BASE_URL = "https://devhub.wortis.cg";
 
-// Fonction native pour générer le ticket (Remplace nanoid)
+// Fonction native pour générer le ticket à 6 caractères
 const generateTicketCode = () => {
     const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let result = '';
@@ -46,14 +46,13 @@ async function getWortisToken() {
     }
 }
 
-// --- 1. INITIALISER LE PAIEMENT ---
+// --- 1. INITIALISER LE PAIEMENT & PUSH ---
 app.post('/generate_ticket', async (req, res) => {
     const { tel, plan } = req.body; 
     const selectedPlan = plans[plan];
 
     if (!selectedPlan) return res.status(400).json({ error: "Plan invalide" });
 
-    // Détection automatique de l'opérateur
     let operator = null;
     if (tel.startsWith('06')) operator = "mtn";
     else if (tel.startsWith('04') || tel.startsWith('05')) operator = "airtel";
@@ -62,26 +61,32 @@ app.post('/generate_ticket', async (req, res) => {
 
     const ticketCode = generateTicketCode();
     const externalRef = `BIGO_${Date.now()}`;
+    
+    // Calcul de l'expiration
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + selectedPlan.seconds);
 
     try {
-        // A. Sauvegarde Supabase
+        // A. Création dans Supabase (status pending)
         const { error: dbError } = await supabase.from('wifi_subscriptions').insert([{
             phone: tel,
-            plan,
+            plan: plan,
             ticket_code: ticketCode,
             payment_ref: externalRef,
             status: 'pending',
             remaining_seconds: selectedPlan.seconds,
             speed_limit: selectedPlan.speed,
-            payment_method: operator
+            payment_method: operator,
+            site_id: "BIGO_BRAZZA_01",
+            expires_at: expiresAt.toISOString()
         }]);
         if (dbError) throw dbError;
 
-        // B. Token & Push
+        // B. Appel Push Money
         const token = await getWortisToken();
-        if (!token) throw new Error("Erreur partenaire (Auth)");
+        if (!token) throw new Error("Échec récupération Token");
 
-        await axios.post(`${WORTIS_BASE_URL}/push/money`, {
+        const pushRes = await axios.post(`${WORTIS_BASE_URL}/push/money`, {
             "operator": operator,
             "clientkey": "wortis",
             "tel": tel,
@@ -93,11 +98,22 @@ app.post('/generate_ticket', async (req, res) => {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // C. Extraction de l'ID Wortis (WP...) et mise à jour DB
+        if (pushRes.data.response && pushRes.data.response.data) {
+            const wortisId = pushRes.data.response.data.transaction.id;
+            
+            await supabase.from('wifi_subscriptions')
+                .update({ wortis_id: wortisId })
+                .eq('payment_ref', externalRef);
+            
+            console.log(`Push réussi. ID Wortis stocké: ${wortisId}`);
+        }
+
         res.json({ success: true, payment_ref: externalRef });
 
     } catch (error) {
         console.error("Erreur Process:", error.response?.data || error.message);
-        res.status(500).json({ error: "Erreur lors de l'initiation" });
+        res.status(500).json({ error: "Erreur lors de l'initiation du paiement" });
     }
 });
 
@@ -106,36 +122,55 @@ app.post('/check_payment', async (req, res) => {
     const { payment_ref } = req.body;
 
     try {
+        // A. Récupérer l'ID Wortis stocké
+        const { data: sub, error: fetchError } = await supabase
+            .from('wifi_subscriptions')
+            .select('wortis_id')
+            .eq('payment_ref', payment_ref)
+            .single();
+
+        if (fetchError || !sub.wortis_id) {
+            return res.json({ success: false, status: 'pending', message: "En attente d'ID Wortis" });
+        }
+
         const token = await getWortisToken();
+        
+        // B. Vérification chez Wortis avec l'ID id_wp
         const response = await axios.post(`${WORTIS_BASE_URL}/check/push/money`, {
             "clientkey": "wortis",
-            "id_wp": payment_ref 
+            "id_wp": sub.wortis_id 
         }, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // C. Si succès confirmé par Wortis
         if (response.data.response && response.data.response.success === true) {
-            // Mise à jour status payé
-            const { data: ticket, error } = await supabase
+            
+            // Mise à jour finale Supabase
+            const { data: ticket, error: updateError } = await supabase
                 .from('wifi_subscriptions')
                 .update({ status: 'paid' })
                 .eq('payment_ref', payment_ref)
                 .select('ticket_code, phone, plan')
                 .single();
 
-            if (error) throw error;
+            if (updateError) throw updateError;
 
-            // Envoi SMS via Twilio
+            // D. Envoi du SMS de confirmation
             try {
                 await twilioClient.messages.create({
-                    body: `Bigo Wifi : Votre code est ${ticket.ticket_code}. Profitez bien !`,
+                    body: `Bigo Wifi : Paiement validé ! Votre code est ${ticket.ticket_code}. Profitez de votre connexion !`,
                     from: process.env.TWILIO_NUMBER,
                     to: `+242${ticket.phone}`
                 });
-            } catch (smsErr) { console.error("Erreur SMS:", smsErr.message); }
+            } catch (smsErr) {
+                console.error("Erreur Twilio:", smsErr.message);
+            }
 
             return res.json({ success: true, status: 'paid', ticket_code: ticket.ticket_code });
         }
+        
+        // Toujours en attente
         res.json({ success: false, status: 'pending' });
 
     } catch (error) {

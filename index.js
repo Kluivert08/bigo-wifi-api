@@ -206,7 +206,7 @@ app.get('/sync_mikrotik', async (req, res) => {
         // On renvoie un format texte simple que le MikroTik peut lire facilement
         let output = "";
         data.forEach(t => {
-            output += `${t.ticket_code},${t.speed_limit},${t.remaining_seconds}|`;
+            output += `${t.ticket_code},${t.speed_limit},${t.remaining_seconds}s|`;
         });
         
         res.send(output);

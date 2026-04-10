@@ -150,33 +150,64 @@ app.post('/check_payment', async (req, res) => {
     const { payment_ref } = req.body;
     
     try {
-        // 1. Trouver la transaction en attente
+        // 1. Récupérer les infos de la transaction (on a besoin de wortis_id et status actuel)
         const { data: sub, error: subError } = await supabase
             .from('wifi_subscriptions')
-            .select('wortis_id, status')
+            .select('wortis_id, status, phone')
             .eq('payment_ref', payment_ref)
             .single();
 
         if (subError || !sub) return res.status(404).json({ error: "Transaction introuvable" });
-        if (sub.status === 'paid') return res.json({ success: true, status: 'paid' });
+        
+        // Si déjà marqué comme payé en base, on ne sollicite pas Wortis, on renvoie le code
+        if (sub.status === 'paid') {
+            const { data: ticket } = await supabase
+                .from('wifi_subscriptions')
+                .select('ticket_code')
+                .eq('payment_ref', payment_ref)
+                .single();
+            return res.json({ success: true, status: 'paid', ticket_code: ticket.ticket_code });
+        }
 
-        // 2. Vérifier auprès de Wortis
+        // 2. Vérifier auprès de Wortis avec le wortis_id
         const token = await getWortisToken();
         const response = await axios.post(`${WORTIS_BASE_URL}/check/push/money`, {
             "clientkey": "wortis",
-            "id_wp": sub.wortis_id
+            "id_wp": sub.wortis_id // Utilisation du wortis_id comme demandé
         }, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
 
-        // 3. Si Wortis confirme le succès, on passe en 'paid'
-        if (response.data.response?.status === "SUCCESSFUL") {
-            const { data: updatedTicket } = await supabase
+        const wortisData = response.data.response;
+        let isSuccess = false;
+
+        // --- LOGIQUE DE VÉRIFICATION HYBRIDE ---
+
+        // Cas A : Structure Airtel (contient data.transaction)
+        if (wortisData.data && wortisData.data.transaction) {
+            const airtelStatus = wortisData.data.transaction.status;
+            // Succès si différent de "TF" (Failed) et différent de vide ""
+            if (airtelStatus !== "TF" && airtelStatus !== "" && airtelStatus !== null) {
+                isSuccess = true;
+            }
+        } 
+        // Cas B : Structure MTN (statut direct dans response)
+        else if (wortisData.status) {
+            if (wortisData.status === "SUCCESSFUL") {
+                isSuccess = true;
+            }
+        }
+
+        // 3. Si le paiement est validé, mise à jour Supabase
+        if (isSuccess) {
+            const { data: updatedTicket, error: updateError } = await supabase
                 .from('wifi_subscriptions')
                 .update({ status: 'paid' })
                 .eq('payment_ref', payment_ref)
                 .select('ticket_code')
                 .single();
+
+            if (updateError) throw updateError;
 
             return res.json({ 
                 success: true, 
@@ -185,14 +216,17 @@ app.post('/check_payment', async (req, res) => {
             });
         }
 
-        res.json({ success: false, status: 'pending' });
+        // Sinon, on renvoie l'état actuel (probablement 'pending' ou 'TF')
+        res.json({ 
+            success: false, 
+            status: wortisData.status || (wortisData.data?.transaction?.status) || 'pending' 
+        });
 
     } catch (error) {
         console.error("Erreur lors de la vérification:", error.message);
         res.status(500).json({ error: "Erreur lors de la vérification du paiement" });
     }
 });
-
 // Lancement du serveur
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

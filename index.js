@@ -170,7 +170,7 @@ app.post('/check_payment', async (req, res) => {
         });
 
         // 3. Si Wortis confirme le succès, on passe en 'paid'
-        if (response.data.response?.success === true) {
+        if (response.data.response?.status === "SUCCESSFUL") {
             const { data: updatedTicket } = await supabase
                 .from('wifi_subscriptions')
                 .update({ status: 'paid' })

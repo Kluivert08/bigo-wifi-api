@@ -23,7 +23,7 @@ const generateTicketCode = () => {
 
 // Configuration des forfaits (Plans)
 const plans = {
-  '1jour': { name: "1 JOUR", price: 200, seconds: 86400, speed: '2M' },
+  '1jour': { name: "1 JOUR", price: 50, seconds: 86400, speed: '2M' },
   '1semaine': { name: "1 SEMAINE", price: 1200, seconds: 604800, speed: '2M' },
   '1mois': { name: "1 MOIS", price: 4200, seconds: 2592000, speed: '3M' }
 };

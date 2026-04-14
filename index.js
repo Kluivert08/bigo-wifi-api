@@ -150,55 +150,34 @@ app.post('/check_payment', async (req, res) => {
     const { payment_ref } = req.body;
     
     try {
-        // 1. Récupérer les infos de la transaction (on a besoin de wortis_id et status actuel)
         const { data: sub, error: subError } = await supabase
             .from('wifi_subscriptions')
-            .select('wortis_id, status, phone')
+            .select('wortis_id, status, phone, plan, expires_at')
             .eq('payment_ref', payment_ref)
             .single();
 
         if (subError || !sub) return res.status(404).json({ error: "Transaction introuvable" });
-        
-        // Si déjà marqué comme payé en base, on ne sollicite pas Wortis, on renvoie le code
         if (sub.status === 'paid') {
-            const { data: ticket } = await supabase
-                .from('wifi_subscriptions')
-                .select('ticket_code')
-                .eq('payment_ref', payment_ref)
-                .single();
+            const { data: ticket } = await supabase.from('wifi_subscriptions').select('ticket_code').eq('payment_ref', payment_ref).single();
             return res.json({ success: true, status: 'paid', ticket_code: ticket.ticket_code });
         }
 
-        // 2. Vérifier auprès de Wortis avec le wortis_id
         const token = await getWortisToken();
         const response = await axios.post(`${WORTIS_BASE_URL}/check/push/money`, {
             "clientkey": "wortis",
-            "id_wp": sub.wortis_id // Utilisation du wortis_id comme demandé
-        }, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
+            "id_wp": sub.wortis_id
+        }, { headers: { 'Authorization': `Bearer ${token}` } });
 
         const wortisData = response.data.response;
         let isSuccess = false;
 
-        // --- LOGIQUE DE VÉRIFICATION HYBRIDE ---
-
-        // Cas A : Structure Airtel (contient data.transaction)
+        // Logique Hybride
         if (wortisData.data && wortisData.data.transaction) {
-            const airtelStatus = wortisData.data.transaction.status;
-            // Succès si différent de "TF" (Failed) et différent de vide ""
-            if (airtelStatus !== "TF" && airtelStatus !== "" && airtelStatus !== null) {
-                isSuccess = true;
-            }
-        } 
-        // Cas B : Structure MTN (statut direct dans response)
-        else if (wortisData.status) {
-            if (wortisData.status === "SUCCESSFUL") {
-                isSuccess = true;
-            }
+            if (wortisData.data.transaction.status === "TS") isSuccess = true;
+        } else if (wortisData.status === "SUCCESSFUL") {
+            isSuccess = true;
         }
 
-        // 3. Si le paiement est validé, mise à jour Supabase
         if (isSuccess) {
             const { data: updatedTicket, error: updateError } = await supabase
                 .from('wifi_subscriptions')
@@ -209,24 +188,54 @@ app.post('/check_payment', async (req, res) => {
 
             if (updateError) throw updateError;
 
+            // --- NOUVEAU : ENVOI DU SMS ---
+            const clientPhone = sub.phone;
+            const ticketCode = updatedTicket.ticket_code;
+            const planName = plans[sub.plan]?.name || sub.plan;
+            const expiryDate = new Date(sub.expires_at).toLocaleString('fr-FR');
+
+            try {
+                if (clientPhone.startsWith('06')) {
+                    // Envoi via Twilio pour MTN
+                    await twilioClient.messages.create({
+                        body: `BIGO WIFI : Votre ticket ${planName} est ${ticketCode}. Valide jusqu'au ${expiryDate}. bitly.com/voirmonforfait`,
+                        from: process.env.TWILIO_PHONE_NUMBER,
+                        to: `+242${clientPhone.substring(1)}` // Format international Congo
+                    });
+                    console.log(`SMS MTN envoyé au ${clientPhone}`);
+                } else {
+                    // Envoi via API Wortis pour Airtel
+                    await axios.get(`${WORTIS_BASE_URL}/send/sms/airtel`, {
+                        params: {
+                            tel: clientPhone,
+                            ticket: ticketCode,
+                            validite: planName,
+                            expire_at: expiryDate
+                        },
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    console.log(`SMS Airtel envoyé au ${clientPhone}`);
+                }
+            } catch (smsErr) {
+                // On log l'erreur mais on ne bloque pas la réponse client car le paiement est validé
+                console.error("Erreur envoi SMS:", smsErr.message);
+            }
+
             return res.json({ 
                 success: true, 
                 status: 'paid', 
-                ticket_code: updatedTicket.ticket_code 
+                ticket_code: ticketCode 
             });
         }
 
-        // Sinon, on renvoie l'état actuel (probablement 'pending' ou 'TF')
-        res.json({ 
-            success: false, 
-            status: wortisData.status || (wortisData.data?.transaction?.status) || 'pending' 
-        });
+        res.json({ success: false, status: 'pending' });
 
     } catch (error) {
         console.error("Erreur lors de la vérification:", error.message);
         res.status(500).json({ error: "Erreur lors de la vérification du paiement" });
     }
 });
+
 // Lancement du serveur
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

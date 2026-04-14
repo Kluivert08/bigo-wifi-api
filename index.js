@@ -165,7 +165,7 @@ app.post('/check_payment', async (req, res) => {
 
         const token = await getWortisToken();
         const response = await axios.post(`${WORTIS_BASE_URL}/check/push/money`, {
-            "operator": sub.payment_method
+            "operator": sub.payment_method,
             "clientkey": "wortis",
             "id_wp": sub.wortis_id
         }, { headers: { 'Authorization': `Bearer ${token}` } });

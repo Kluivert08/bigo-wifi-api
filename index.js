@@ -152,7 +152,7 @@ app.post('/check_payment', async (req, res) => {
     try {
         const { data: sub, error: subError } = await supabase
             .from('wifi_subscriptions')
-            .select('wortis_id, status, phone, plan, expires_at')
+            .select('wortis_id, status, phone, plan, payment_method, expires_at')
             .eq('payment_ref', payment_ref)
             .single();
 
@@ -165,6 +165,7 @@ app.post('/check_payment', async (req, res) => {
 
         const token = await getWortisToken();
         const response = await axios.post(`${WORTIS_BASE_URL}/check/push/money`, {
+            "operator": sub.payment_method
             "clientkey": "wortis",
             "id_wp": sub.wortis_id
         }, { headers: { 'Authorization': `Bearer ${token}` } });

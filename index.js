@@ -157,6 +157,7 @@ app.post('/check_payment', async (req, res) => {
             .single();
 
         if (subError || !sub) return res.status(404).json({ error: "Transaction introuvable" });
+        
         if (sub.status === 'paid') {
             const { data: ticket } = await supabase.from('wifi_subscriptions').select('ticket_code').eq('payment_ref', payment_ref).single();
             return res.json({ success: true, status: 'paid', ticket_code: ticket.ticket_code });
@@ -171,14 +172,19 @@ app.post('/check_payment', async (req, res) => {
         const wortisData = response.data.response;
         let isSuccess = false;
 
-        // Logique Hybride
+        // --- DÉBOGAGE : Log de la réponse reçue pour voir la structure exacte ---
+        console.log("Réponse Wortis pour Airtel/MTN:", JSON.stringify(wortisData));
+
         if (wortisData.data && wortisData.data.transaction) {
+            // Logique Airtel : on vérifie "TS"
             if (wortisData.data.transaction.status === "TS") isSuccess = true;
         } else if (wortisData.status === "SUCCESSFUL") {
+            // Logique MTN
             isSuccess = true;
         }
 
         if (isSuccess) {
+            // 1. D'ABORD : Mise à jour Supabase (Priorité absolue)
             const { data: updatedTicket, error: updateError } = await supabase
                 .from('wifi_subscriptions')
                 .update({ status: 'paid' })
@@ -188,51 +194,52 @@ app.post('/check_payment', async (req, res) => {
 
             if (updateError) throw updateError;
 
-            // --- NOUVEAU : ENVOI DU SMS ---
+            // 2. ENSUITE : Tentative d'envoi SMS (dans un try/catch pour ne pas bloquer)
             const clientPhone = sub.phone;
             const ticketCode = updatedTicket.ticket_code;
             const planName = plans[sub.plan]?.name || sub.plan;
-            const expiryDate = new Date(sub.expires_at).toLocaleString('fr-FR');
+            const expiryDate = sub.expires_at ? new Date(sub.expires_at).toLocaleDateString('fr-FR') : "N/A";
 
             try {
                 if (clientPhone.startsWith('06')) {
-                    // Envoi via Twilio pour MTN
+                    // SMS MTN via Twilio
                     await twilioClient.messages.create({
-                        body: `BIGO WIFI : Votre ticket ${planName} est ${ticketCode}. Valide jusqu'au ${expiryDate}. bitly.com/voirmonforfait`,
+                        body: `BIGO WIFI : Votre ticket ${planName} est ${ticketCode}. Valide jusqu'au ${expiryDate}.`,
                         from: process.env.TWILIO_PHONE_NUMBER,
-                        to: `+242${clientPhone.substring(1)}` // Format international Congo
+                        to: `+242${clientPhone.substring(1)}`
                     });
-                    console.log(`SMS MTN envoyé au ${clientPhone}`);
                 } else {
-                    // Envoi via API Wortis pour Airtel
+                    // SMS Airtel via Wortis (Nettoyage des paramètres pour éviter la 422)
                     await axios.get(`${WORTIS_BASE_URL}/send/sms/airtel`, {
                         params: {
                             tel: clientPhone,
                             ticket: ticketCode,
-                            validite: planName,
+                            validite: planName.split(' ').join('_'), // Pas d'espaces
                             expire_at: expiryDate
                         },
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    console.log(`SMS Airtel envoyé au ${clientPhone}`);
                 }
+                console.log("SMS envoyé avec succès");
             } catch (smsErr) {
-                // On log l'erreur mais on ne bloque pas la réponse client car le paiement est validé
-                console.error("Erreur envoi SMS:", smsErr.message);
+                // Si l'SMS échoue (Erreur 422 par exemple), on log mais on ne crash pas
+                console.error("L'envoi du SMS a échoué mais le ticket est validé:", smsErr.message);
             }
 
+            // On répond toujours succès si isSuccess était vrai
             return res.json({ 
                 success: true, 
                 status: 'paid', 
-                ticket_code: ticketCode 
+                ticket_code: updatedTicket.ticket_code 
             });
         }
 
+        // Si ce n'est pas encore SUCCESSFUL ou TS
         res.json({ success: false, status: 'pending' });
 
     } catch (error) {
-        console.error("Erreur lors de la vérification:", error.message);
-        res.status(500).json({ error: "Erreur lors de la vérification du paiement" });
+        console.error("Erreur critique lors de la vérification:", error.message);
+        res.status(500).json({ error: "Erreur interne" });
     }
 });
 

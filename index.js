@@ -244,6 +244,32 @@ app.post('/check_payment', async (req, res) => {
     }
 });
 
+// --- 4. ROUTE LOGS DE CONNEXION (Appelée par MikroTik) ---
+app.get('/log_session', async (req, res) => {
+    const { user, uptime, bytes_in, bytes_out, mac, site } = req.query;
+
+    try {
+        const { error } = await supabase
+            .from('usage_logs')
+            .insert([{
+                ticket_code: user,
+                duration: uptime,
+                bytes_in: parseInt(bytes_in) || 0,
+                bytes_out: parseInt(bytes_out) || 0,
+                mac_address: mac,
+                site_id: site || "UNKNOWN"
+            }]);
+
+        if (error) throw error;
+        
+        console.log(`Log enregistré pour le ticket ${user} sur le site ${site}`);
+        res.status(200).send("ok");
+    } catch (err) {
+        console.error("Erreur enregistrement log:", err.message);
+        res.status(500).send("error");
+    }
+});
+
 // Lancement du serveur
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

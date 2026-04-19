@@ -244,7 +244,30 @@ app.post('/check_payment', async (req, res) => {
     }
 });
 
-// --- 4. ROUTE LOGS DE CONNEXION (Appelée par MikroTik) ---
+// --- 4. ROUTE LOG LOGIN (Appelée par MikroTik On Login) ---
+app.get('/log_login', async (req, res) => {
+    const { ticket, mac, site } = req.query;
+    console.log(`🔔 LOGIN : Ticket ${ticket} sur appareil ${mac} (Site: ${site})`);
+    
+    try {
+        const { error } = await supabase
+            .from('usage_logs')
+            .insert([{
+                ticket_code: ticket,
+                mac_address: mac,
+                site_id: site || "UNKNOWN",
+                status: "Connexion" // Marqueur de début
+            }]);
+
+        if (error) throw error;
+        res.status(200).send("ok");
+    } catch (err) {
+        console.error("Erreur log_login:", err.message);
+        res.status(500).send("error");
+    }
+});
+
+// --- 5. ROUTE LOGS DE DÉCONNEXION (Appelée par MikroTik On Logout) ---
 app.get('/log_session', async (req, res) => {
     const { user, uptime, bytes_in, bytes_out, mac, site } = req.query;
 
@@ -257,15 +280,16 @@ app.get('/log_session', async (req, res) => {
                 bytes_in: parseInt(bytes_in) || 0,
                 bytes_out: parseInt(bytes_out) || 0,
                 mac_address: mac,
-                site_id: site || "UNKNOWN"
+                site_id: site || "UNKNOWN",
+                status: "Deconnexion" // Marqueur de fin avec stats
             }]);
 
         if (error) throw error;
         
-        console.log(`Log enregistré pour le ticket ${user} sur le site ${site}`);
+        console.log(`🔕 LOGOUT : Ticket ${user} - Durée: ${uptime}`);
         res.status(200).send("ok");
     } catch (err) {
-        console.error("Erreur enregistrement log:", err.message);
+        console.error("Erreur log_session:", err.message);
         res.status(500).send("error");
     }
 });

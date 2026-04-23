@@ -246,7 +246,7 @@ app.post('/check_payment', async (req, res) => {
 
 // --- 4. ROUTE LOG LOGIN (Appelée par MikroTik On Login) ---
 app.get('/log_login', async (req, res) => {
-    const { ticket, mac, site } = req.query;
+    const { ticket, mac, site, status } = req.query;
     console.log(`🔔 LOGIN : Ticket ${ticket} sur appareil ${mac} (Site: ${site})`);
     
     try {
@@ -269,7 +269,7 @@ app.get('/log_login', async (req, res) => {
 
 // --- 5. ROUTE LOGS DE DÉCONNEXION (Appelée par MikroTik On Logout) ---
 app.get('/log_session', async (req, res) => {
-    const { user, uptime, bytes_in, bytes_out, mac, site } = req.query;
+    const { user, uptime, bytes_in, bytes_out, mac, site, status } = req.query;
 
     try {
         const { error } = await supabase

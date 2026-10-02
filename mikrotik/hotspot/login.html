@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bigo Wifi by Sixif - Portail de Connexion</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #0f172a;
+            --accent-mtn: #eab308;
+            --accent-airtel: #dc2626;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 440px;
+            margin: auto;
+        }
+
+        /* En-tête */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .badge-power {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #ecfdf5;
+            color: #065f46;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            border: 1px solid #a7f3d0;
+        }
+
+        .brand-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--secondary);
+            letter-spacing: -0.5px;
+        }
+
+        .brand-title span {
+            color: var(--primary);
+        }
+
+        .brand-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Carte Principale */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        /* Onglets */
+        .tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--card-bg);
+            color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .tab-content {
+            padding: 20px;
+        }
+
+        /* Liste des Forfaits */
+        .plans-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .plan-card {
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .plan-card:hover {
+            border-color: #93c5fd;
+        }
+
+        .plan-card.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .plan-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--secondary);
+        }
+
+        .plan-speed {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .plan-price {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--primary);
+            text-align: right;
+        }
+
+        .plan-currency {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* Formulaire */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--secondary);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-prefix {
+            position: absolute;
+            left: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 14px 12px 64px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 16px;
+            color: var(--text-main);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+        }
+
+        .input-plain {
+            padding-left: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .operator-badge {
+            position: absolute;
+            right: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .operator-badge.mtn {
+            display: inline-block;
+            background: var(--accent-mtn);
+            color: #000;
+        }
+
+        .operator-badge.airtel {
+            display: inline-block;
+            background: var(--accent-airtel);
+            color: #fff;
+        }
+
+        /* Boutons */
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn-submit:active {
+            transform: scale(0.98);
+        }
+
+        .btn-submit:disabled {
+            background: #94a3b8;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* Alertes et Messages */
+        .alert {
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .alert.error {
+            display: block;
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert.info {
+            display: block;
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        /* Modal de Paiement / Attente USSD */
+        .payment-modal {
+            display: none;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--secondary);
+            margin-bottom: 8px;
+        }
+
+        .modal-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .modal-highlight {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .ticket-code-display {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: var(--secondary);
+            margin: 14px 0;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .footer strong {
+            color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <div class="badge-power">
+            ⚡ Boîtier Sixif Autonome • Actif 24h/24
+        </div>
+        <h1 class="brand-title">BIGO <span>WIFI</span></h1>
+        <p class="brand-subtitle">Internet Forfaitaire Haut Débit propulsé par <strong>Sixif</strong></p>
+    </div>
+
+    <!-- Erreur RouterOS MikroTik éventuelle -->
+    $(if error)
+    <div class="alert error">
+        $(error)
+    </div>
+    $(endif)
+
+    <div id="ui-alert" class="alert"></div>
+
+    <!-- Carte Principale -->
+    <div class="card">
+        <!-- Navigation Onglets -->
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-buy-btn" onclick="switchTab('buy')">Acheter un Pass</button>
+            <button class="tab-btn" id="tab-code-btn" onclick="switchTab('code')">J'ai un Ticket</button>
+        </div>
+
+        <!-- Onglet 1 : Acheter un Pass Mobile Money -->
+        <div class="tab-content" id="tab-buy">
+            <div id="buy-step-form">
+                <div class="form-group">
+                    <label class="form-label">1. Choisissez votre forfait :</label>
+                    <div class="plans-grid">
+                        <div class="plan-card selected" onclick="selectPlan('1jour', this)">
+                            <div>
+                                <div class="plan-name">Pass 1 Jour</div>
+                                <div class="plan-speed">Valable 24h • Débit 2 Mbps</div>
+                            </div>
+                            <div>
+                                <div class="plan-price">50 <span class="plan-currency">FCFA</span></div>
+                            </div>
+                        </div>
+
+                        <div class="plan-card" onclick="selectPlan('1semaine', this)">
+                            <div>
+                                <div class="plan-name">Pass 1 Semaine</div>
+                                <div class="plan-speed">Valable 7 jours • Débit 2 Mbps</div>
+                            </div>
+                            <div>
+                                <div class="plan-price">1 200 <span class="plan-currency">FCFA</span></div>
+                            </div>
+                        </div>
+
+                        <div class="plan-card" onclick="selectPlan('1mois', this)">
+                            <div>
+                                <div class="plan-name">Pass 1 Mois</div>
+                                <div class="plan-speed">Valable 30 jours • Débit 3 Mbps</div>
+                            </div>
+                            <div>
+                                <div class="plan-price">4 200 <span class="plan-currency">FCFA</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">2. Votre numéro Mobile Money (Congo) :</label>
+                    <div class="input-wrapper">
+                        <span class="input-prefix">+242</span>
+                        <input type="tel" id="client-tel" class="form-input" placeholder="06 123 45 67" maxlength="9" oninput="detectOperator(this.value)">
+                        <span id="op-badge" class="operator-badge"></span>
+                    </div>
+                </div>
+
+                <button type="button" id="btn-pay" class="btn-submit" onclick="initiatePayment()">
+                    Payer et se Connecter
+                </button>
+            </div>
+
+            <!-- Étape d'attente du Push USSD -->
+            <div id="buy-step-waiting" class="payment-modal">
+                <div class="spinner"></div>
+                <h3 class="modal-title">Validation en cours...</h3>
+                <p class="modal-desc">
+                    Veuillez regarder votre téléphone et <strong>confirmer le paiement Mobile Money</strong> en tapant votre code secret.
+                </p>
+                <div id="payment-timer" style="font-size: 13px; font-weight: 700; color: #dc2626; margin-bottom: 12px;"></div>
+                <button type="button" class="tab-btn" style="background:#f1f5f9; width: 100%;" onclick="cancelWaiting()">Annuler</button>
+            </div>
+
+            <!-- Étape de Succès -->
+            <div id="buy-step-success" class="payment-modal">
+                <h3 class="modal-title" style="color: var(--success);">🎉 Paiement Confirmé !</h3>
+                <p class="modal-desc">Voici votre code ticket personnel (reçu également par SMS) :</p>
+                <div class="ticket-code-display" id="generated-ticket-code">------</div>
+                <p class="modal-desc" style="font-size: 12px;">Connexion au réseau Wi-Fi en cours...</p>
+                <button type="button" class="btn-submit" style="background: var(--success);" onclick="autoLoginWithCurrentTicket()">Accéder à Internet</button>
+            </div>
+        </div>
+
+        <!-- Onglet 2 : Se connecter avec un code existant -->
+        <div class="tab-content" id="tab-code" style="display: none;">
+            <div class="form-group">
+                <label class="form-label">Entrez votre code ticket (6 caractères) :</label>
+                <div class="input-wrapper">
+                    <input type="text" id="manual-ticket" class="form-input input-plain" placeholder="EX: 4X9A2Z" maxlength="6">
+                </div>
+            </div>
+            <button type="button" class="btn-submit" onclick="loginWithManualCode()">
+                Se Connecter
+            </button>
+        </div>
+    </div>
+
+    <!-- Formulaire d'authentification MikroTik standard (Caché) -->
+    <form name="sendin" action="$(link-login-only)" method="post" style="display:none;">
+        <input type="hidden" name="username" id="hotspot_username" />
+        <input type="hidden" name="password" id="hotspot_password" />
+        <input type="hidden" name="dst" value="$(link-orig)" />
+        <input type="hidden" name="popup" value="true" />
+    </form>
+
+    <!-- Footer -->
+    <div class="footer">
+        Équipement certifié <strong>Sixif Networks</strong><br>
+        Support client & Assistance : contact@innovalab.cg
+    </div>
+</div>
+
+<script>
+    // Configuration de l'API Sixif
+    const API_BASE_URL = "https://bigo-wifi-api.fly.dev";
+    const SITE_ID = "BIGO_BRAZZA_MAIN"; // Identifiant de ce spot
+
+    let selectedPlan = '1jour';
+    let currentPaymentRef = null;
+    let pollInterval = null;
+    let countdownInterval = null;
+    let confirmedTicket = null;
+
+    // Gestion des Onglets
+    function switchTab(tab) {
+        document.getElementById('tab-buy-btn').classList.toggle('active', tab === 'buy');
+        document.getElementById('tab-code-btn').classList.toggle('active', tab === 'code');
+        document.getElementById('tab-buy').style.display = (tab === 'buy') ? 'block' : 'none';
+        document.getElementById('tab-code').style.display = (tab === 'code') ? 'block' : 'none';
+        hideAlert();
+    }
+
+    // Sélection du forfait
+    function selectPlan(plan, el) {
+        selectedPlan = plan;
+        document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    // Détection automatique de l'opérateur Congo
+    function detectOperator(tel) {
+        const clean = tel.replace(/[^0-9]/g, '');
+        const badge = document.getElementById('op-badge');
+        
+        if (clean.startsWith('06')) {
+            badge.className = 'operator-badge mtn';
+            badge.innerText = 'MTN MoMo';
+        } else if (clean.startsWith('04') || clean.startsWith('05')) {
+            badge.className = 'operator-badge airtel';
+            badge.innerText = 'Airtel Money';
+        } else {
+            badge.className = 'operator-badge';
+            badge.innerText = '';
+        }
+    }
+
+    function showAlert(msg, isError = true) {
+        const al = document.getElementById('ui-alert');
+        al.innerText = msg;
+        al.className = isError ? 'alert error' : 'alert info';
+        al.style.display = 'block';
+    }
+
+    function hideAlert() {
+        document.getElementById('ui-alert').style.display = 'none';
+    }
+
+    // Étape 1 : Initier le paiement
+    async function initiatePayment() {
+        hideAlert();
+        let tel = document.getElementById('client-tel').value.replace(/[^0-9]/g, '');
+        
+        if (tel.length < 9) {
+            showAlert("Veuillez saisir un numéro de téléphone valide à 9 chiffres (ex: 06...)");
+            return;
+        }
+
+        const btn = document.getElementById('btn-pay');
+        btn.disabled = true;
+        btn.innerText = "Initiation du paiement...";
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/generate_ticket`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tel: tel,
+                    plan: selectedPlan,
+                    site_id: SITE_ID
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || "Impossible d'initier le paiement");
+            }
+
+            currentPaymentRef = data.payment_ref;
+            showWaitingModal();
+            startPaymentPolling();
+
+        } catch (err) {
+            showAlert("Erreur : " + err.message);
+            btn.disabled = false;
+            btn.innerText = "Payer et se Connecter";
+        }
+    }
+
+    function showWaitingModal() {
+        document.getElementById('buy-step-form').style.display = 'none';
+        document.getElementById('buy-step-waiting').style.display = 'block';
+
+        let timeLeft = 90;
+        const timerEl = document.getElementById('payment-timer');
+        timerEl.innerText = `Temps restant pour valider : ${timeLeft}s`;
+
+        countdownInterval = setInterval(() => {
+            timeLeft--;
+            timerEl.innerText = `Temps restant pour valider : ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                cancelWaiting("Délai de validation expiré. Veuillez réessayer.");
+            }
+        }, 1000);
+    }
+
+    function cancelWaiting(msg) {
+        if (pollInterval) clearInterval(pollInterval);
+        if (countdownInterval) clearInterval(countdownInterval);
+        document.getElementById('buy-step-waiting').style.display = 'none';
+        document.getElementById('buy-step-form').style.display = 'block';
+        document.getElementById('btn-pay').disabled = false;
+        document.getElementById('btn-pay').innerText = "Payer et se Connecter";
+        if (msg) showAlert(msg);
+    }
+
+    // Étape 2 : Vérification du paiement (Polling)
+    function startPaymentPolling() {
+        pollInterval = setInterval(async () => {
+            if (!currentPaymentRef) return;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/check_payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payment_ref: currentPaymentRef })
+                });
+
+                const data = await res.json();
+
+                if (data.success && data.status === 'paid') {
+                    clearInterval(pollInterval);
+                    clearInterval(countdownInterval);
+                    confirmedTicket = data.ticket_code;
+                    showSuccessModal(confirmedTicket);
+                    
+                    // Connexion automatique après 2 secondes (le temps que MikroTik reçoive la synchro)
+                    setTimeout(() => {
+                        autoLoginWithCurrentTicket();
+                    }, 2500);
+                }
+            } catch (e) {
+                console.warn("Polling check error:", e);
+            }
+        }, 3000);
+    }
+
+    function showSuccessModal(code) {
+        document.getElementById('buy-step-waiting').style.display = 'none';
+        document.getElementById('buy-step-success').style.display = 'block';
+        document.getElementById('generated-ticket-code').innerText = code;
+    }
+
+    // Soumission automatique vers MikroTik Hotspot
+    function autoLoginWithCurrentTicket() {
+        if (!confirmedTicket) return;
+        submitToHotspot(confirmedTicket);
+    }
+
+    // Connexion manuelle avec un code ticket existant
+    function loginWithManualCode() {
+        const code = document.getElementById('manual-ticket').value.trim().toUpperCase();
+        if (code.length < 4) {
+            showAlert("Veuillez saisir un code ticket valide.");
+            return;
+        }
+        submitToHotspot(code);
+    }
+
+    function submitToHotspot(ticket) {
+        document.getElementById('hotspot_username').value = ticket;
+        document.getElementById('hotspot_password').value = ticket;
+        document.sendin.submit();
+    }
+</script>
+
+</body>
+</html>

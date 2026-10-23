@@ -6,15 +6,15 @@
     <title>Bigo Wifi - Statut de Connexion</title>
     <style>
         :root {
-            --primary: #7c3aed;
-            --primary-dark: #6d28d9;
-            --secondary: #1e1b4b;
-            --success: #10b981;
+            --primary: #2563eb;
+            --secondary: #0f172a;
+            --success: #16a34a;
+            --bg: #f8fafc;
             --card-bg: #ffffff;
-            --text-main: #1e1b4b;
+            --text-main: #1e293b;
             --text-muted: #64748b;
             --border: #e2e8f0;
-            --radius: 16px;
+            --radius: 14px;
         }
 
         * {
@@ -25,13 +25,13 @@
         }
 
         body {
-            background: linear-gradient(145deg, #2e1065 0%, #1e1035 50%, #0d061a 100%);
+            background-color: var(--bg);
             color: var(--text-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 24px 16px;
+            padding: 20px 16px;
         }
 
         .container {
@@ -43,9 +43,9 @@
         .card {
             background: var(--card-bg);
             border-radius: var(--radius);
-            box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.45), 0 0 30px rgba(139, 92, 246, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 26px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            padding: 24px;
             text-align: center;
         }
 
@@ -72,15 +72,15 @@
         }
 
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
         }
 
         .user-code {
             font-size: 24px;
-            font-weight: 900;
-            color: var(--primary);
+            font-weight: 800;
+            color: var(--secondary);
             letter-spacing: 2px;
             margin-bottom: 20px;
         }
@@ -96,20 +96,20 @@
         .stat-item {
             background: #f8fafc;
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 10px;
             padding: 12px;
         }
 
         .stat-label {
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
         }
 
         .stat-value {
             font-size: 16px;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--secondary);
             margin-top: 4px;
         }
@@ -117,7 +117,7 @@
         .btn-disconnect {
             display: block;
             width: 100%;
-            padding: 13px;
+            padding: 12px;
             background: #fee2e2;
             color: #b91c1c;
             border: 1px solid #fca5a5;
@@ -125,7 +125,6 @@
             font-weight: 700;
             font-size: 14px;
             text-decoration: none;
-            cursor: pointer;
             transition: all 0.2s;
         }
 
@@ -134,14 +133,10 @@
         }
 
         .footer {
-            margin-top: 24px;
+            margin-top: 20px;
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-muted);
             text-align: center;
-        }
-
-        .footer strong {
-            color: #c4b5fd;
         }
     </style>
 </head>

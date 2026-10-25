@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bigo Wifi - Connexion</title>
+<style>
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: #ffffff;
+margin: 0;
+padding: 20px;
+display: flex;
+justify-content: center;
+}
+.container {
+width: 100%;
+max-width: 420px;
+text-align: center;
+}
+.logo { 
+    max-width: 130px; 
+    max-height: 120px; 
+    width: auto; 
+    height: auto; 
+    object-fit: contain; 
+    margin-bottom: 12px; 
+    display: inline-block;
+}
+.tagline {
+font-size: 24px;
+font-weight: 600;
+color: #4b0f3a;
+margin-bottom: 25px;
+}
+.otp-wrapper {
+display: flex;
+flex-direction: column;
+gap: 15px;
+margin-bottom: 25px;
+}
+.otp-container {
+display: flex;
+justify-content: space-between;
+gap: 8px;
+}
+.otp-input {
+width: 100%;
+height: 55px;
+text-align: center;
+font-size: 22px;
+font-weight: bold;
+border: 2px solid #e0e0e0;
+border-radius: 10px;
+color: #4b0f3a;
+background: #fafafa;
+transition: all 0.2s;
+}
+.otp-input:focus {
+border-color: #4b0f3a;
+background: #fff;
+outline: none;
+box-shadow: 0 0 8px rgba(75, 15, 58, 0.2);
+}
+.connect-btn {
+width: 100%;
+padding: 16px;
+border: none;
+border-radius: 12px;
+background: #4b0f3a;
+color: white;
+font-size: 18px;
+font-weight: 600;
+cursor: pointer;
+transition: background 0.3s;
+}
+.connect-btn:hover { background: #6a174f; }
+.connect-btn:disabled { background: #ccc; cursor: not-allowed; }
+#timerMsg {
+background: #fff4fc;
+color: #4b0f3a;
+padding: 10px;
+border-radius: 8px;
+font-size: 14px;
+font-weight: 600;
+border: 1px solid #4b0f3a;
+display: none; /* Masqué par défaut */
+}
+table {
+width: 100%;
+border-collapse: collapse;
+background: #fafafa;
+border-radius: 12px;
+overflow: hidden;
+box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+margin-top: 10px;
+}
+th { background: #4b0f3a; color: white; padding: 14px; text-align: left; }
+td { padding: 14px; border-bottom: 1px solid #eee; text-align: left; }
+.pay {
+background: #4b0f3a;
+color: white;
+border: none;
+padding: 10px 16px;
+border-radius: 8px;
+cursor: pointer;
+font-weight: bold;
+}
+.footer { margin-top: 40px; font-size: 13px; color: #777; font-weight: 500; }
+.highlight { border-color: #4b0f3a !important; background: #fff !important; }
+</style>
+</head>
+<body>
+<div class="container">
+<img src="logo.png" class="logo" alt="Bigo Wifi" onerror="this.onerror=null; this.src='https://hjy0ajm4es2.sn.mynetname.net/logo.png';">
+<div class="tagline">Tia sangu ?</div>
+<form name="login" action="$(link-login-only)" method="post" id="loginForm">
+<input type="hidden" name="dst" value="$(link-orig)">
+<input type="hidden" name="popup" value="true">
+<input type="hidden" name="username" id="username">
+<input type="hidden" name="password" id="password">
+<div class="otp-wrapper">
+<div id="timerMsg">
+Activation technique en cours... <span id="countdown">60</span>s
+</div>
+<div class="otp-container">
+<input type="text" class="otp-input" maxlength="1" inputmode="text" pattern="[A-Za-z0-9]">
+<input type="text" class="otp-input" maxlength="1" inputmode="text" pattern="[A-Za-z0-9]">
+<input type="text" class="otp-input" maxlength="1" inputmode="text" pattern="[A-Za-z0-9]">
+<input type="text" class="otp-input" maxlength="1" inputmode="text" pattern="[A-Za-z0-9]">
+<input type="text" class="otp-input" maxlength="1" inputmode="text" pattern="[A-Za-z0-9]">
+<input type="text" class="otp-input" maxlength="1" inputmode="text" pattern="[A-Za-z0-9]">
+</div>
+<button type="submit" class="connect-btn" id="submitBtn">Connecter</button>
+</div>
+</form>
+<table>
+<thead>
+<tr>
+<th>Forfait</th>
+<th>Prix</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 Jour</td>
+<td>200 FCFA</td>
+<td><button class="pay" onclick="pay('1jour')">Payer</button></td>
+</tr>
+<tr>
+<td>1 Semaine</td>
+<td>1200 FCFA</td>
+<td><button class="pay" onclick="pay('1semaine')">Payer</button></td>
+</tr>
+<tr>
+<td>1 Mois</td>
+<td>4200 FCFA</td>
+<td><button class="pay" onclick="pay('1mois')">Payer</button></td>
+</tr>
+</tbody>
+</table>
+<div class="footer">
+© 2026 Powered by INNOVALAB HTC
+</div>
+</div>
+<script>
+const inputs = document.querySelectorAll('.otp-input');
+const hiddenUser = document.getElementById('username');
+const hiddenPass = document.getElementById('password');
+const submitBtn = document.getElementById('submitBtn');
+const timerMsg = document.getElementById('timerMsg');
+const countdownEl = document.getElementById('countdown');
+
+// --- 1. LOGIQUE DE SAISIE MANUELLE ---
+inputs.forEach((input, index) => {
+input.addEventListener('input', (e) => {
+e.target.value = e.target.value.toUpperCase();
+if (e.target.value.length === 1 && index < inputs.length - 1) {
+inputs[index + 1].focus();
+}
+updateHiddenFields();
+});
+input.addEventListener('keydown', (e) => {
+if (e.key === 'Backspace' && !e.target.value && index > 0) {
+inputs[index - 1].focus();
+}
+});
+});
+
+function updateHiddenFields() {
+let code = "";
+inputs.forEach(input => code += input.value.toUpperCase());
+hiddenUser.value = code;
+hiddenPass.value = code;
+}
+
+// --- 2. LOGIQUE D'AUTO-REMPLISSAGE & COMPTEUR ---
+document.addEventListener("DOMContentLoaded", () => {
+const params = new URLSearchParams(window.location.search);
+const ticket = params.get("ticket");
+if (ticket && ticket.length === 6) {
+// Remplissage des champs visuels
+const ticketChars = ticket.split('');
+ticketChars.forEach((char, i) => {
+if (inputs[i]) {
+inputs[i].value = char.toUpperCase();
+inputs[i].classList.add('highlight');
+}
+});
+updateHiddenFields();
+
+// Lancement du verrouillage et du compteur
+submitBtn.disabled = true;
+submitBtn.innerText = "Patientez...";
+timerMsg.style.display = "block";
+let count = 60;
+const timer = setInterval(() => {
+count--;
+countdownEl.innerText = count;
+if (count <= 0) {
+clearInterval(timer);
+submitBtn.disabled = false;
+submitBtn.innerText = "Connexion...";
+// Auto-soumission du formulaire
+document.getElementById('loginForm').submit();
+}
+}, 1000);
+}
+});
+
+// --- 3. REDIRECTION PAIEMENT ---
+function pay(plan) {
+window.location.href = "payment.html?plan=" + plan;
+}
+</script>
+</body>
+</html>

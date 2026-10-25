@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paiement Bigo Wifi</title>
+<style>
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background: #ffffff; 
+    margin: 0; 
+    padding: 20px; 
+    display: flex; 
+    justify-content: center; 
+}
+.container { 
+    width: 100%; 
+    max-width: 420px; 
+    text-align: center; 
+}
+.logo { 
+    max-width: 130px; 
+    max-height: 120px; 
+    width: auto; 
+    height: auto; 
+    object-fit: contain; 
+    margin-bottom: 12px; 
+    display: inline-block;
+}
+h2 { 
+    color: #4b0f3a; 
+    margin-bottom: 10px; 
+    font-size: 24px; 
+    font-weight: 700;
+}
+.plan-info {
+    background: #f4eaf2;
+    padding: 15px;
+    border-radius: 12px;
+    color: #4b0f3a;
+    font-weight: 700;
+    margin-bottom: 25px;
+    border: 1px solid #e0c6d9;
+    font-size: 16px;
+}
+.input-group { 
+    position: relative; 
+    margin-bottom: 15px; 
+    text-align: left; 
+}
+label { 
+    display: block; 
+    margin-bottom: 8px; 
+    font-weight: 600; 
+    color: #555; 
+    font-size: 14px; 
+}
+/* Box du numéro avec logos intégrés */
+.phone-box {
+    display: flex;
+    align-items: center;
+    border: 2px solid #4b0f3a;
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: white;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(75, 15, 58, 0.06);
+}
+.phone-box:focus-within {
+    box-shadow: 0 0 10px rgba(75, 15, 58, 0.2);
+}
+.prefix { 
+    font-weight: bold; 
+    margin-right: 10px; 
+    color: #4b0f3a; 
+    display: flex; 
+    align-items: center; 
+    font-size: 16px;
+    user-select: none;
+}
+.prefix span {
+    margin-right: 6px;
+    font-size: 18px;
+}
+.phone-input { 
+    border: none; 
+    outline: none; 
+    flex: 1; 
+    font-size: 19px; 
+    width: 100%; 
+    color: #222; 
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+.phone-input::placeholder {
+    color: #bbb;
+    font-weight: normal;
+    letter-spacing: normal;
+}
+/* Style pour le logo opérateur à droite dans le champ */
+.op-logo-container { 
+    height: 32px; 
+    min-width: 44px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+}
+.op-logo { 
+    max-height: 32px; 
+    max-width: 44px; 
+    display: none; 
+    border-radius: 6px; 
+    object-fit: contain;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+.hint-text {
+    font-size: 12px;
+    color: #888;
+    margin-top: 6px;
+}
+.btn-pay {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    background: #4b0f3a;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.3s, transform 0.1s;
+}
+.btn-pay:hover:not(:disabled) { 
+    background: #6a174f; 
+}
+.btn-pay:active:not(:disabled) {
+    transform: scale(0.99);
+}
+.btn-pay:disabled { 
+    background: #ccc; 
+    cursor: not-allowed; 
+}
+.status-msg {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 10px;
+    background: #fff9c4;
+    color: #827717;
+    font-weight: 600;
+    display: none;
+    border: 1px solid #fbc02d;
+    font-size: 14px;
+    line-height: 1.5;
+}
+.back-link {
+    display: inline-block;
+    margin-top: 22px;
+    color: #4b0f3a;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+.back-link:hover {
+    text-decoration: underline;
+    opacity: 0.85;
+}
+.footer { 
+    margin-top: 35px; 
+    font-size: 12px; 
+    color: #888; 
+    font-weight: 500;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <img src="logo.png" class="logo" alt="Bigo Wifi" onerror="this.onerror=null; this.src='https://hjy0ajm4es2.sn.mynetname.net/logo.png';">
+    <h2>Paiement Mobile</h2>
+    <div id="planBox" class="plan-info">Chargement du forfait...</div>
+    
+    <div class="input-group">
+        <label for="tel">Numéro de téléphone (9 chiffres)</label>
+        <div class="phone-box">
+            <span class="prefix"><span>🇨🇬</span>+242</span>
+            <input type="tel" id="tel" class="phone-input" placeholder="06 444 55 66" maxlength="9" autocomplete="tel">
+            <div class="op-logo-container">
+                <img src="mtn.png" id="imgMtn" class="op-logo" alt="MTN Mobile Money">
+                <img src="airtel.png" id="imgAirtel" class="op-logo" alt="Airtel Money">
+            </div>
+        </div>
+        <div class="hint-text">MTN Mobile Money (06) ou Airtel Money (04, 05)</div>
+    </div>
+    
+    <button id="payBtn" class="btn-pay" disabled>Payer maintenant</button>
+    
+    <div id="statusMsg" class="status-msg">
+        ⏳ Attente de validation... <br>
+        Validez la notification de retrait sur votre téléphone.
+    </div>
+    
+    <div>
+        <a href="login.html" class="back-link">← Retour à la connexion</a>
+    </div>
+
+    <div class="footer">
+        © 2026 Powered by INNOVALAB HTC
+    </div>
+</div>
+
+<script>
+const API_URL = "https://bigo-wifi-api.fly.dev";
+const params = new URLSearchParams(window.location.search);
+const planKey = params.get("plan");
+const siteId = params.get("site") || "BIGO_BRAZZA_MAIN";
+const plans = {
+    '1jour': { name: "1 JOUR", price: 200 },
+    '1semaine': { name: "1 SEMAINE", price: 1200 },
+    '1mois': { name: "1 MOIS", price: 4200 }
+};
+
+const telInput = document.getElementById('tel');
+const payBtn = document.getElementById('payBtn');
+const imgMtn = document.getElementById('imgMtn');
+const imgAirtel = document.getElementById('imgAirtel');
+const statusMsg = document.getElementById('statusMsg');
+
+if (plans[planKey]) {
+    document.getElementById('planBox').innerText = `Forfait : ${plans[planKey].name} — ${plans[planKey].price} FCFA`;
+} else {
+    document.getElementById('planBox').innerText = `Sélectionnez un forfait valide`;
+}
+
+// --- DÉTECTION LOGO OPÉRATEUR & VALIDATION DU NUMÉRO ---
+telInput.addEventListener('input', (e) => {
+    let val = e.target.value.replace(/\s/g, '');
+    
+    // Réinitialisation de l'affichage des logos
+    imgMtn.style.display = "none";
+    imgAirtel.style.display = "none";
+    payBtn.disabled = true;
+
+    // Détection MTN Congo (préfixe 06)
+    if (val.startsWith('06')) {
+        imgMtn.style.display = "block";
+        if (val.length === 9) payBtn.disabled = false;
+    }
+    // Détection Airtel Congo (préfixes 04 ou 05)
+    else if (val.startsWith('04') || val.startsWith('05')) {
+        imgAirtel.style.display = "block";
+        if (val.length === 9) payBtn.disabled = false;
+    }
+});
+
+payBtn.addEventListener('click', async () => {
+    const telValue = telInput.value.replace(/\s/g, '').trim();
+    if (!telValue || telValue.length !== 9) {
+        alert("Veuillez saisir un numéro valide à 9 chiffres (ex: 064445566).");
+        return;
+    }
+
+    payBtn.disabled = true;
+    payBtn.innerText = "Traitement en cours...";
+    
+    try {
+        const response = await fetch(`${API_URL}/generate_ticket`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tel: telValue, plan: planKey, site_id: siteId })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            statusMsg.style.display = "block";
+            statusMsg.innerHTML = "⏳ Attente de validation...<br>Validez la demande de retrait reçue sur votre téléphone.";
+            startPolling(data.payment_ref);
+        } else {
+            alert("Erreur : " + (data.error || "Impossible d'initier le paiement"));
+            payBtn.disabled = false;
+            payBtn.innerText = "Payer maintenant";
+        }
+    } catch (err) {
+        alert("Erreur de connexion au serveur. Vérifiez votre réseau.");
+        payBtn.disabled = false;
+        payBtn.innerText = "Payer maintenant";
+    }
+});
+
+function startPolling(ref) {
+    const checkInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`${API_URL}/check_payment`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ payment_ref: ref })
+            });
+            const data = await res.json();
+            
+            if (data.status === 'paid') {
+                clearInterval(checkInterval);
+                statusMsg.style.background = "#ecfdf5";
+                statusMsg.style.color = "#065f46";
+                statusMsg.style.borderColor = "#a7f3d0";
+                statusMsg.innerHTML = "✅ Paiement validé avec succès !<br>Génération du ticket et connexion...";
+                setTimeout(() => {
+                    window.location.href = `login.html?ticket=${data.ticket_code}`;
+                }, 1500);
+            }
+        } catch (e) {
+            console.warn("Polling error:", e);
+        }
+    }, 4000);
+}
+</script>
+</body>
+</html>
